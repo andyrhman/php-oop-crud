@@ -41,10 +41,20 @@ class Database
         }
     }
 
-    public function findAll($query)
+    public function select($query)
     {
         $result = mysqli_query($this->link, $query) or die($this->link->error . __LINE__);
         if (mysqli_num_rows($result) > 0) {
+            return $result;
+        } else {
+            return false;
+        }
+    }
+
+    public function update($query)
+    {
+        $result = mysqli_query($this->link, $query) or die($this->link->error . __LINE__);
+        if ($result) {
             return $result;
         } else {
             return false;
