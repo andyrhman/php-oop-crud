@@ -54,4 +54,10 @@ class Register {
             }
         }
     }
+
+    public function allStudent() {
+        $query = "SELECT * FROM `tbl_register` ORDER BY id DESC";
+        $result = $this->db->findAll($query);
+        return $result;
+    }
 }
