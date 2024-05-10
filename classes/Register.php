@@ -58,12 +58,27 @@ class Register
         }
     }
 
-    public function allStudent()
+    // public function allStudent()
+    // {
+    //     $query = "SELECT * FROM `tbl_register` ORDER BY id DESC";
+    //     $result = $this->db->select($query);
+    //     return $result;
+    // }
+    public function allStudent($limit, $offset)
     {
-        $query = "SELECT * FROM `tbl_register` ORDER BY id DESC";
+        $query = "SELECT * FROM `tbl_users` ORDER BY id DESC LIMIT $limit OFFSET $offset";
         $result = $this->db->select($query);
         return $result;
     }
+
+    public function countStudents()
+    {
+        $query = "SELECT COUNT(*) as count FROM `tbl_users`";
+        $result = $this->db->select($query);
+        $row = mysqli_fetch_assoc($result);
+        return $row['count'];
+    }
+
 
     public function getStudentById($id)
     {
@@ -141,5 +156,27 @@ class Register
             }
         }
 
+    }
+
+    public function deleteStudent($id)
+    {
+        $img_query = "SELECT * FROM tbl_register WHERE id = '$id'";
+        $img_res = $this->db->select($img_query);
+        if ($img_res) {
+            while ($row = mysqli_fetch_assoc($img_res)) {
+                $photo = $row["photo"];
+                unlink($photo);
+            }
+        }
+
+        $query = "DELETE FROM `tbl_register` WHERE id='$id'";
+        $result = $this->db->delete($query);
+        if ($result) {
+            $msg = "Deleted Successfully";
+            return $msg;
+        } else {
+            $msg = "Delete Failed";
+            return $msg;
+        }
     }
 }

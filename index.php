@@ -2,6 +2,51 @@
 include_once "classes/Register.php";
 
 $re = new Register();
+
+if (isset($_GET['del'])){
+    $id = base64_decode($_GET['del']);
+    $deleteStudent = $re->deleteStudent($id);
+}
+// Pagination Parameters
+$limit = 10; // Number of records per page
+$page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
+$offset = ($page - 1) * $limit;
+
+// Get Students and Total Count
+$allStudents = $re->allStudent($limit, $offset);
+$totalStudents = $re->countStudents();
+
+// Calculate Total Pages
+$totalPages = ceil($totalStudents / $limit);
+
+function paginationLinks($page, $totalPages) {
+    $pagination = [];
+
+    // Always show the first page
+    if ($page > 3) {
+        $pagination[] = 1;
+        if ($page > 4) {
+            $pagination[] = '...';
+        }
+    }
+
+    // Pages around the current page
+    for ($i = max(1, $page - 2); $i <= min($totalPages, $page + 2); $i++) {
+        $pagination[] = $i;
+    }
+
+    // Always show the last page
+    if ($page < $totalPages - 2) {
+        if ($page < $totalPages - 3) {
+            $pagination[] = '...';
+        }
+        $pagination[] = $totalPages;
+    }
+
+    return $pagination;
+}
+
+$paginationLinks = paginationLinks($page, $totalPages);
 ?>
 
 <!DOCTYPE html>
@@ -26,6 +71,26 @@ $re = new Register();
         <h1 class="text-2xl font-bold mb-4">Student Registration Form</h1>
         <p>Enter your information using the form below. Make sure your information is correct before submitting.</p>
         <div class="mx-auto max-w-screen-lg px-4 py-8 sm:px-8">
+            <?php
+                if (isset($deleteStudent)) {
+                // Determine the Tailwind classes based on success/failure message
+                $isSuccess = strpos($deleteStudent, "Success") !== false;
+                $alertClasses = $isSuccess ? "bg-green-100 border-green-400 text-green-700" : "bg-red-100 border-red-400 text-red-700";
+                ?>
+                <div id="deleteStudent-alert" class="<?= $alertClasses ?> border px-4 py-3 rounded relative" role="alert">
+                    <strong class="font-bold"><?= $deleteStudent ?></strong>
+                    <span class="absolute top-0 bottom-0 right-0 px-4 py-3">
+                    <svg onclick="closeAlert('deleteStudent-alert')" class="fill-current h-6 w-6 text-grey-500" role="button"
+                        xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
+                        <title>Close</title>
+                        <path
+                        d="M14.348 14.849a1.2 1.2 0 0 1-1.697 0L10 11.819l-2.651 3.029a1.2 1.2 0 1 1-1.697-1.697l2.758-3.15-2.759-3.152a1.2 1.2 0 1 1 1.697-1.697L10 8.183l2.651-3.031a1.2 1.2 0 1 1 1.697 1.697l-2.758 3.152 2.758 3.15a1.2 1.2 0 0 1 0 1.698z" />
+                    </svg>
+                    </span>
+                </div>
+                <?php
+                }
+            ?>
             <div class="flex items-center justify-between pb-6">
                 <div>
                     <h2 class="font-semibold text-gray-700">User Accounts</h2>
@@ -48,8 +113,7 @@ $re = new Register();
                 <div class="overflow-x-auto">
                     <table class="w-full">
                         <thead>
-                            <tr
-                                class="bg-blue-600 text-left text-xs font-semibold uppercase tracking-widest text-white">
+                            <tr class="bg-blue-600 text-left text-xs font-semibold uppercase tracking-widest text-white">
                                 <th class="px-5 py-3">Name</th>
                                 <th class="px-5 py-3">Email</th>
                                 <th class="px-5 py-3">Phone</th>
@@ -60,7 +124,6 @@ $re = new Register();
                         </thead>
                         <tbody class="text-gray-500">
                             <?php
-                            $allStudents = $re->allStudent();
                             if ($allStudents) {
                                 while ($row = mysqli_fetch_assoc($allStudents)) {
                                 ?>
@@ -94,7 +157,9 @@ $re = new Register();
                                                     </a>
                                                 </div>
                                                 <div class="ml-2">
-                                                    <a href="#" class="m-2 inline-flex items-center justify-center rounded-3xl border border-transparent bg-red-600 px-2 py-2 font-medium text-white hover:bg-red-700">
+                                                    <a href="?del=<?= base64_encode($row["id"])?>" 
+                                                        onclick="return confirm('Are you sure you want to delete?')"
+                                                        class="m-2 inline-flex items-center justify-center rounded-3xl border border-transparent bg-red-600 px-2 py-2 font-medium text-white hover:bg-red-700">
                                                         <svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="#e8eaed"><path d="m376-300 104-104 104 104 56-56-104-104 104-104-56-56-104 104-104-104-56 56 104 104-104 104 56 56Zm-96 180q-33 0-56.5-23.5T200-200v-520h-40v-80h200v-40h240v40h200v80h-40v520q0 33-23.5 56.5T680-120H280Zm400-600H280v520h400v-520Zm-400 0v520-520Z"/>
                                                         </svg>
                                                     </a>
@@ -103,7 +168,6 @@ $re = new Register();
                                         </td>
                                     </tr>
                                 <?php
-
                                 }
                             }
                             ?>
@@ -111,17 +175,30 @@ $re = new Register();
                     </table>
                 </div>
                 <div class="flex flex-col items-center border-t bg-white px-5 py-5 sm:flex-row sm:justify-between">
-                    <span class="text-xs text-gray-600 sm:text-sm"> Showing 1 to 5 of 12 Entries </span>
+                    <span class="text-xs text-gray-600 sm:text-sm"> Showing <?= ($offset + 1) ?> to <?= min($offset + $limit, $totalStudents) ?> of <?= $totalStudents ?> Entries </span>
                     <div class="mt-2 inline-flex sm:mt-0">
-                        <button
-                            class="mr-2 h-12 w-12 rounded-full border text-sm font-semibold text-gray-600 transition duration-150 hover:bg-gray-100">Prev</button>
-                        <button
-                            class="h-12 w-12 rounded-full border text-sm font-semibold text-gray-600 transition duration-150 hover:bg-gray-100">Next</button>
+                        <a href="?page=<?= max(1, $page - 1) ?>" class="mr-2 flex h-10 w-10 items-center justify-center rounded-full border border-gray-300 bg-white text-sm font-semibold text-gray-600 hover:bg-gray-100 transition duration-150">←</a>
+                        <?php foreach ($paginationLinks as $link) { ?>
+                            <?php if ($link == '...') { ?>
+                                <span class="mr-2 flex h-10 w-10 items-center justify-center rounded-full border border-gray-300 bg-white text-sm font-semibold text-gray-600">...</span>
+                            <?php } else { ?>
+                                <a href="?page=<?= $link ?>" class="mr-2 flex h-10 w-10 items-center justify-center rounded-full border border-gray-300 bg-white text-sm font-semibold <?= $link == $page ? 'bg-blue-600 text-white' : 'text-gray-600' ?> hover:bg-gray-100 transition duration-150"><?= $link ?></a>
+                            <?php } ?>
+                        <?php } ?>
+                        <a href="?page=<?= min($totalPages, $page + 1) ?>" class="flex h-10 w-10 items-center justify-center rounded-full border border-gray-300 bg-white text-sm font-semibold text-gray-600 hover:bg-gray-100 transition duration-150">→</a>
                     </div>
                 </div>
             </div>
         </div>
     </div>
+    <script>
+    function closeAlert(alertId) {
+      var alertElement = document.getElementById(alertId);
+      if (alertElement) {
+        alertElement.style.display = 'none';
+      }
+    }
+  </script>
 </body>
 
 </html>
